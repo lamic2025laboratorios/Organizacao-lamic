@@ -365,8 +365,63 @@
             transition: width 0.1s linear;
         }
 
+        .session-timer {
+            font-size: 0.9em;
+            color: var(--primary-color);
+            opacity: 0.7;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
         .hidden {
             display: none;
+        }
+
+        #content-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            z-index: 20;
+            transition: all 0.3s ease;
+            animation: bounceIn 0.5s ease-out;
+        }
+
+        .back-button:hover {
+            background-color: var(--accent-color);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px var(--shadow-color);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        .back-button i {
+            font-size: 1.3em;
         }
     </style>
 </head>
@@ -376,16 +431,16 @@
             <h1>Dados - Laboratório LAMIC</h1>
         </header>
         <div class="container">
-            <a href="https://example.com/pops" class="button">
+            <a href="https://example.com/pops" class="button" onclick="loadContent(event, this.href)">
                 <i class="fas fa-rocket"></i> Pop's
             </a>
-            <a href="https://example.com/planilhas" class="button">
+            <a href="https://lamic2025laboratorios.github.io/Acervo/#" class="button" onclick="loadContent(event, this.href)">
                 <i class="fas fa-table"></i> Planilhas
             </a>
-            <a href="https://example.com/protocolos" class="button">
+            <a href="https://example.com/protocolos" class="button" onclick="loadContent(event, this.href)">
                 <i class="fas fa-file-alt"></i> Protocolos
             </a>
-            <a href="https://example.com/termos" class="button">
+            <a href="https://example.com/termos" class="button" onclick="loadContent(event, this.href)">
                 <i class="fas fa-file-contract"></i> Termos
             </a>
             <div class="dropdown-container">
@@ -393,9 +448,9 @@
                     <i class="fas fa-university"></i> Universidade LAMIC
                 </button>
                 <div class="dropdown-content">
-                    <a href="https://example.com/treinamentos"><i class="fas fa-chalkboard-teacher"></i> Treinamentos</a>
-                    <a href="https://example.com/educacao-continuada"><i class="fas fa-graduation-cap"></i> Educação Continuada</a>
-                    <a href="https://example.com/sistemas-processos"><i class="fas fa-cogs"></i> Sistemas e Processos</a>
+                    <a href="https://example.com/treinamentos" onclick="loadContent(event, this.href)"><i class="fas fa-chalkboard-teacher"></i> Treinamentos</a>
+                    <a href="https://example.com/educacao-continuada" onclick="loadContent(event, this.href)"><i class="fas fa-graduation-cap"></i> Educação Continuada</a>
+                    <a href="https://example.com/sistemas-processos" onclick="loadContent(event, this.href)"><i class="fas fa-cogs"></i> Sistemas e Processos</a>
                 </div>
             </div>
             <div class="dropdown-container">
@@ -403,11 +458,12 @@
                     <i class="fas fa-users"></i> Contador de pacientes
                 </button>
                 <div class="dropdown-content">
-                    <a href="https://example.com/lojas"><i class="fas fa-store"></i> Lojas</a>
-                    <a href="https://example.com/cac"><i class="fas fa-headset"></i> CAC</a>
+                    <a href="https://lamic2025laboratorios.github.io/Contadorpacientes-lamic/" onclick="loadContent(event, this.href)"><i class="fas fa-store"></i> Lojas</a>
+                    <a href="https://lamic2025laboratorios.github.io/contadorcc-lamic/" onclick="loadContent(event, this.href)"><i class="fas fa-headset"></i> CAC</a>
                 </div>
             </div>
         </div>
+        <div id="session-timer" class="session-timer">Sessão expira em: <span id="timer-display">00:00</span></div>
     </div>
     <div id="password-overlay" class="password-overlay">
         <div class="password-box">
@@ -421,10 +477,94 @@
             </div>
         </div>
     </div>
+    <div id="content-area" class="hidden"></div>
     <script>
         let attemptCount = 0;
         const maxInitialAttempts = 5;
         const correctPassword = 'Lamic759@';
+        const sessionDuration = 120 * 60 * 1000; // 120 minutes in milliseconds
+
+        function formatTime(ms) {
+            const minutes = Math.floor(ms / 60000);
+            const seconds = Math.floor((ms % 60000) / 1000);
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function startSessionTimer() {
+            const sessionStart = parseInt(localStorage.getItem('sessionStart'));
+            const timerDisplay = document.getElementById('timer-display');
+            const sessionTimer = document.getElementById('session-timer');
+            const overlay = document.getElementById('password-overlay');
+            const mainContent = document.getElementById('main-content');
+
+            const updateTimer = () => {
+                const currentTime = Date.now();
+                const timeLeft = sessionStart + sessionDuration - currentTime;
+
+                if (timeLeft <= 0) {
+                    localStorage.removeItem('sessionStart');
+                    sessionTimer.style.display = 'none';
+                    mainContent.classList.add('blurred');
+                    overlay.classList.remove('hidden');
+                    clearInterval(timerInterval);
+                } else {
+                    timerDisplay.textContent = formatTime(timeLeft);
+                }
+            };
+
+            sessionTimer.style.display = 'block';
+            updateTimer();
+            const timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function loadContent(event, url) {
+            event.preventDefault();
+            const mainContent = document.getElementById('main-content');
+            const contentArea = document.getElementById('content-area');
+            const passwordOverlay = document.getElementById('password-overlay');
+
+            // Hide main content and password overlay
+            mainContent.classList.add('hidden');
+            passwordOverlay.classList.add('hidden');
+
+            // Create iframe for content
+            const iframe = document.createElement('iframe');
+            iframe.id = 'content-frame';
+            iframe.src = url;
+            contentArea.innerHTML = '';
+            contentArea.appendChild(iframe);
+            contentArea.classList.remove('hidden');
+
+            // Create back button
+            const backButton = document.createElement('a');
+            backButton.className = 'back-button';
+            backButton.innerHTML = '<i class="fas fa-home"></i> Voltar ao Menu';
+            backButton.onclick = () => {
+                contentArea.innerHTML = '';
+                contentArea.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                if (!localStorage.getItem('sessionStart') || (Date.now() - parseInt(localStorage.getItem('sessionStart')) >= sessionDuration)) {
+                    mainContent.classList.add('blurred');
+                    passwordOverlay.classList.remove('hidden');
+                }
+                backButton.remove();
+            };
+            document.body.appendChild(backButton);
+        }
+
+        // Check if a valid session exists on page load
+        window.onload = function() {
+            const sessionStart = localStorage.getItem('sessionStart');
+            const currentTime = Date.now();
+            const overlay = document.getElementById('password-overlay');
+            const mainContent = document.getElementById('main-content');
+
+            if (sessionStart && (currentTime - sessionStart < sessionDuration)) {
+                overlay.classList.add('hidden');
+                mainContent.classList.remove('blurred');
+                startSessionTimer();
+            }
+        };
 
         function checkPassword() {
             const password = document.getElementById('password-input').value;
@@ -439,16 +579,17 @@
             const passwordInput = document.getElementById('password-input');
 
             if (password === correctPassword) {
+                localStorage.setItem('sessionStart', Date.now());
                 overlay.classList.add('hidden');
                 mainContent.classList.remove('blurred');
-                attemptCount = 0; // Reset attempts on success
+                attemptCount = 0;
+                startSessionTimer();
             } else {
                 attemptCount++;
                 errorMessage.style.display = 'block';
                 passwordInput.classList.add('shake');
                 submitButton.classList.add('error');
 
-                // Remove animations after they complete
                 setTimeout(() => {
                     passwordInput.classList.remove('shake');
                     submitButton.classList.remove('error');
@@ -456,7 +597,7 @@
 
                 if (attemptCount >= maxInitialAttempts) {
                     const additionalAttempts = attemptCount - maxInitialAttempts;
-                    const waitTime = 5 + 5 * Math.floor(additionalAttempts / 2); // Increase by 5s every 2 attempts
+                    const waitTime = 5 + 5 * Math.floor(additionalAttempts / 2);
                     submitButton.disabled = true;
                     waitMessage.style.display = 'block';
                     progressBarContainer.style.display = 'block';
@@ -464,9 +605,9 @@
                     waitTimeDisplay.textContent = waitTime;
 
                     let timeElapsed = 0;
-                    const interval = 100; // Update every 100ms for smooth animation
-                    const steps = waitTime * 1000 / interval; // Number of updates
-                    const increment = 100 / steps; // Percentage increment per update
+                    const interval = 100;
+                    const steps = waitTime * 1000 / interval;
+                    const increment = 100 / steps;
                     let progress = 0;
 
                     const progressInterval = setInterval(() => {
@@ -474,7 +615,6 @@
                         progress += increment;
                         progressBar.style.width = `${Math.min(progress, 100)}%`;
 
-                        // Update countdown display every second
                         const timeLeft = Math.ceil((waitTime * 1000 - timeElapsed) / 1000);
                         waitTimeDisplay.textContent = timeLeft;
 
@@ -492,7 +632,6 @@
             }
         }
 
-        // Allow Enter key to submit password
         document.getElementById('password-input').addEventListener('keypress', function(event) {
             if (event.key === 'Enter' && !document.getElementById('submit-button').disabled) {
                 checkPassword();
