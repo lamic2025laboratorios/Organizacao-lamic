@@ -268,9 +268,7 @@
         }
 
         .password-box {
-            background-color衡量
-
-            color: var(--secondary-color);
+            background-color: var(--secondary-color);
             border-radius: 10px;
             padding: 30px;
             box-shadow: 0 5px 20px var(--shadow-color);
@@ -618,7 +616,7 @@
                     const progressInterval = setInterval(() => {
                         timeElapsed += interval;
                         progress += increment;
-                        progressBar.style.width = `${Math.min(progess, 100)}%`;
+                        progressBar.style.width = `${Math.min(progress, 100)}%`;
 
                         const timeLeft = Math.ceil((waitTime * 1000 - timeElapsed) / 1000);
                         waitTimeDisplay.textContent = timeLeft;
